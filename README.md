@@ -30,7 +30,7 @@
 	- PID control switches off at 88°C and boiling will be done with reduced heater power which can be defined as in the original plugin (default is 70%)
 - I do recommend to install and use also the Pushover Plugin to recieve push notifications when you need to add or remove the malt pipe or add hops.
 	
-## Step creation from a beerxl file
+## Step creation from a beer.xml file
 - Upload a beerxml file (e.g. from Beersmith - tested on my side)
 - Import the recipe to craftbeerpi with (bm_recipe_creation must be set to YES)
 - The software now adds a mashin step that switches to automode once you start the process flow.
