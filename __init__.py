@@ -99,31 +99,21 @@ class BM_MashInStep(StepBase):
             cbpi.notify("Error", "Failed to set Auto mode {}".format(["OFF","ON"][auto_state]), type="danger", timeout=None)
             cbpi.app.logger.error(e)
 
-##################################################################################
+################################################################################
 @cbpi.step
-class BM_MashOutStep(StepBase):
-    '''
-    Just put the decorator @cbpi.step on top of a method
-    '''
+class BM_ManualStep(StepBase):
     # Properties
-    temp = Property.Number("Temperature", configurable=True,  description="Target Temperature of Mash Step")
-    kettle = StepProperty.Kettle("Kettle", description="Kettle in which the mashing takes place")
+    heading = Property.Text("Heading", configurable=True, default_value="Step Alert", description="First line of notification.")
+    message = Property.Text("Message", configurable=True, default_value="Press next button to continue", description="Second line of notification.")
+    notifyType = Property.Select("Type", options=["success","info","warning","danger"])
+    proceed = Property.Select("Next Step", options=["Pause","Continue"], description="Whether or not to automatically continue to the next brew step.")
     s = False
+    #-------------------------------------------------------------------------------
 
-    @cbpi.action("Change Power")
-    def change_power(self):
-        self.actor_power(1, 50)
-
+    @cbpi.action("Start Timer Now")
     def init(self):
-        '''
-        Initialize Step. This method is called once at the beginning of the step
-        :return:
-        '''
-        # set target tep
-        self.s = False
-        self.set_target_temp(self.temp, self.kettle)
-        self.setAutoMode(True)
-
+        if self.notifyType not in ["success","info","warning","danger"]:
+            self.notifyType = "info"
 
     def execute(self):
         '''
@@ -132,36 +122,11 @@ class BM_MashOutStep(StepBase):
         '''
 
         # Check if Target Temp is reached
-        if self.get_kettle_temp(self.kettle) >= float(self.temp) and self.s is False:
+        if self.s is False:
             self.s = True
-            self.setAutoMode(False)
-            self.notify("MashOut Step Completed!", "Please remove Malt Pipe and Sparge. Press Next to continue", timeout=None)
-    #-------------------------------------------------------------------------------
-    def setAutoMode(self, auto_state):
-        try:
-            kettle = cbpi.cache.get("kettle")[int(self.kettle)]
-            if (kettle.state is False) and (auto_state is True):
-                # turn on
-                if kettle.logic is not None:
-                    cfg = kettle.config.copy()
-                    cfg.update(dict(api=cbpi, kettle_id=kettle.id, heater=kettle.heater, sensor=kettle.sensor))
-                    instance = cbpi.get_controller(kettle.logic).get("class")(**cfg)
-                    instance.init()
-                    kettle.instance = instance
-                    def run(instance):
-                        instance.run()
-                    t = cbpi.socketio.start_background_task(target=run, instance=instance)
-                kettle.state = not kettle.state
-                cbpi.emit("UPDATE_KETTLE", cbpi.cache.get("kettle")[int(self.kettle)])
-            elif (kettle.state is True) and (auto_state is False):
-                # turn off
-                kettle.instance.stop()
-                kettle.state = not kettle.state
-                cbpi.emit("UPDATE_KETTLE", cbpi.cache.get("kettle")[int(self.kettle)])
-        except Exception as e:
-            cbpi.notify("Error", "Failed to set Auto mode {}".format(["OFF","ON"][auto_state]), type="danger", timeout=None)
-            cbpi.app.logger.error(e)
-
+            self.notify(self.heading, self.message, type=self.notifyType, timeout=None)
+            if self.proceed == "Continue":
+                self.next()
 
 ################################################################################
 @cbpi.step
@@ -215,7 +180,7 @@ class BM_MashStep(StepBase):
 
         # Check if timer finished and go to next step
         if self.is_timer_finished() == True:
-#            self.setAutoMode(False)
+            self.setAutoMode(False)
             self.notify("Mash Step %s Completed!" % self.name, "Starting the next step", timeout=None)
             self.next()
 
@@ -244,72 +209,6 @@ class BM_MashStep(StepBase):
         except Exception as e:
             cbpi.notify("Error", "Failed to set Auto mode {}".format(["OFF","ON"][auto_state]), type="danger", timeout=None)
             cbpi.app.logger.error(e)
-
-################################################################################
-@cbpi.step
-class BM_FirstWortHop(StepBase):
-    '''
-    Just put the decorator @cbpi.step on top of a method
-    '''
-    # Properties
-    temp = Property.Number("Temperature", configurable=True,  description="Target Temperature of Mash Step")
-    kettle = StepProperty.Kettle("Kettle", description="Kettle in which the mashing takes place")
-    s = False
-
-    @cbpi.action("Change Power")
-    def change_power(self):
-        self.actor_power(1, 50)
-
-    def init(self):
-        '''
-        Initialize Step. This method is called once at the beginning of the step
-        :return:
-        '''
-        # set target tep
-        self.s = False
-        self.set_target_temp(self.temp, self.kettle)
-        self.setAutoMode(True)
-
-
-    def execute(self):
-        '''
-        This method is execute in an interval
-        :return:
-        '''
-
-        # Check if Target Temp is reached
-        if self.get_kettle_temp(self.kettle) >= float(self.temp) and self.s is False:
-            self.s = True
-            self.setAutoMode(False)
-            self.notify("First Wort Hop Addition", "Please add hops for first wort", timeout=None)
-            self.next()
-
-    #-------------------------------------------------------------------------------
-    def setAutoMode(self, auto_state):
-        try:
-            kettle = cbpi.cache.get("kettle")[int(self.kettle)]
-            if (kettle.state is False) and (auto_state is True):
-                # turn on
-                if kettle.logic is not None:
-                    cfg = kettle.config.copy()
-                    cfg.update(dict(api=cbpi, kettle_id=kettle.id, heater=kettle.heater, sensor=kettle.sensor))
-                    instance = cbpi.get_controller(kettle.logic).get("class")(**cfg)
-                    instance.init()
-                    kettle.instance = instance
-                    def run(instance):
-                        instance.run()
-                    t = cbpi.socketio.start_background_task(target=run, instance=instance)
-                kettle.state = not kettle.state
-                cbpi.emit("UPDATE_KETTLE", cbpi.cache.get("kettle")[int(self.kettle)])
-            elif (kettle.state is True) and (auto_state is False):
-                # turn off
-                kettle.instance.stop()
-                kettle.state = not kettle.state
-                cbpi.emit("UPDATE_KETTLE", cbpi.cache.get("kettle")[int(self.kettle)])
-        except Exception as e:
-            cbpi.notify("Error", "Failed to set Auto mode {}".format(["OFF","ON"][auto_state]), type="danger", timeout=None)
-            cbpi.app.logger.error(e)
-
 
 ##############################################################################        
 @cbpi.step
@@ -369,9 +268,6 @@ class BM_BoilStep(StepBase):
         if (value != None 
             and self.__getattribute__("hop_%s_added" % number) is not True 
             and (time.time() > (self.timer_end - int(value)*60))):
-
-#        if self.__getattribute__("hop_%s_added" % number) is not True and time.time() > (
-#            self.timer_end - (int(self.timer) * 60 - int(value) * 60)):
 
             self.__setattr__("hop_%s_added" % number, True)
             self.notify("Hop Alert", "Please add Hop %s" % number, timeout=None)
