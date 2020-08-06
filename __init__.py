@@ -18,22 +18,22 @@ def BM_RecipeCreation():
 	global bm_recipe_creation
 	bm_recipe_creation = cbpi.get_config_parameter("bm_recipe_creation", None)
 	if bm_recipe_creation is None:
-		print "INIT BM Recipe Creation Flag"
+		print ("INIT BM Recipe Creation Flag")
 		try:
-			cbpi.add_config_parameter("bm_recipe_creation", "NO", "select", "Braumeister Recipe Creation Flag", ["YES", "NO"])
-                        bm_recipe_creation = cbpi.get_config_parameter("bm_recipe_creation", None)
+                    cbpi.add_config_parameter("bm_recipe_creation", "NO", "select", "Braumeister Recipe Creation Flag", ["YES", "NO"])
+                    bm_recipe_creation = cbpi.get_config_parameter("bm_recipe_creation", None)
 		except:
-			cbpi.notify("Braumeister Error", "Unable to update database. Update CraftBeerPi and reboot.", type="danger", timeout=None)
+                    cbpi.notify("Braumeister Error", "Unable to update database. Update CraftBeerPi and reboot.", type="danger", timeout=None)
 
 @cbpi.initalizer(order=9000)
 def init(cbpi):
         global BM_Recipes
-	cbpi.app.logger.info("INITIALIZE  Braumeister Recipe PLUGIN")
-	BM_RecipeCreation()
-	if  bm_recipe_creation is None or not bm_recipe_creation:
-		cbpi.notify("Braumeister Recipe  Error", "Check Braumeister Recipe Flag is set", type="danger", timeout=None)
-	else:
-		BM_Recipes = "OK"
+        cbpi.app.logger.info("INITIALIZE  Braumeister Recipe PLUGIN")
+        BM_RecipeCreation()
+        if  bm_recipe_creation is None or not bm_recipe_creation:
+            cbpi.notify("Braumeister Recipe  Error", "Check Braumeister Recipe Flag is set", type="danger", timeout=None)
+        else:
+            BM_Recipes = "OK"
 
 
 ##################################################################################
@@ -217,7 +217,7 @@ class BM_BoilStep(StepBase):
     Just put the decorator @cbpi.step on top of a method
     '''
     # Properties
-    lid_temp = 95 if cbpi.get_config_parameter("unit", "C") == "C" else 203
+    lid_temp = 95 # temp in C for lid removal alarm during boil
     lid_flag = False
     temp = Property.Number("Temperature", configurable=True, default_value=100, description="Target temperature for boiling")
     kettle = StepProperty.Kettle("Kettle", description="Kettle in which the boiling step takes place")
@@ -241,8 +241,9 @@ class BM_BoilStep(StepBase):
         # set target tep
         self.set_target_temp(self.temp, self.kettle)
         self.setAutoMode(True)
-
-
+        # if temp unit is F, calculate set temnp from C to F
+        if cbpi.get_config_parameter("unit", "C") != "C": 
+            self.lid_temp = round(9.0 / 5.0 * self.lid_temp + 32, 2)
 
     @cbpi.action("Start Timer Now")
     def start(self):
@@ -332,12 +333,12 @@ class BM_BoilStep(StepBase):
 @cbpi.controller
 class BM_PIDSmartBoilWithPump(KettleController):
 
-    a_p = Property.Number("P", True, 102, description="P Value of PID")
-    b_i = Property.Number("I", True, 100, description="I Value of PID")
-    c_d = Property.Number("D", True, 5, description="D Value of PID")
+    a_p = Property.Number("P", True, 117.0795, description="P Value of PID")
+    b_i = Property.Number("I", True, 0.2747, description="I Value of PID")
+    c_d = Property.Number("D", True, 41.58, description="D Value of PID")
     d_max_output = Property.Number("Max Output %", True, 100, description="Max power for PID and Ramp up.")
-    e_max_temp_pid = Property.Number("Max PID Target Temperature", False, 88,description="If Target Temperature is set above this, PID will be disabled and Boil Mode will turn on.")        
-    f_max_output_boil = Property.Number("Max Boil Output %", True, 70, description="Power when Max Boil Temperature is reached.")
+    e_max_temp_pid = Property.Number("Max PID Target Temperature", False, 88,description="If Target Temperature (C) is set above this, PID will be disabled and Boil Mode will turn on.")        
+    f_max_output_boil = Property.Number("Max Boil Output %", True, 85, description="Power when Max Boil Temperature is reached.")
     g_max_temp_boil = Property.Number("Max Boil Temperature", True, 98,description="When Temperature reaches this, power will be reduced to Max Boil Output.")
 
     h_internal_loop_time = Property.Number("Internal loop time", True, 0.2, description="In seconds, how quickly the internal loop will run, dictates maximum PID resolution.")
@@ -346,7 +347,7 @@ class BM_PIDSmartBoilWithPump(KettleController):
 
     j_mash_pump_rest_time = Property.Number("Mash pump rest time", True, 60, description="Rest the pump for this many seconds every rest interval.")
 
-    k_pump_max_temp = Property.Number("Pump maximum temperature", False, 88, description="The pump will be switched off after the boil reaches this temperature.")
+    k_pump_max_temp = Property.Number("Pump maximum temperature", False, 88, description="The pump will be switched off after the boil reaches this temperature (C).")
 
 
     def __init__(self, *args, **kwds):
@@ -384,8 +385,12 @@ class BM_PIDSmartBoilWithPump(KettleController):
         i = float(self.b_i)
         d = float(self.c_d)
         
-        maxoutput = float(self.d_max_output)          
-        maxtemppid = float(self.e_max_temp_pid)
+        maxoutput = float(self.d_max_output)
+        # convert value to if, if F is set in cofig
+        if cbpi.get_config_parameter("unit", "C") == "C":        
+            maxtemppid = round(9.0 / 5.0 * self.e_max_temp_pid + 32, 2)
+        else:
+            maxtemppid = float(self.e_max_temp_pid)
         
         pid = BM_PIDArduino(sampleTime, p, i, d, 0, maxoutput)
         
@@ -406,7 +411,11 @@ class BM_PIDSmartBoilWithPump(KettleController):
         next_pump_start = 0
         next_pump_rest = None
 
-        pump_max_temp = int(self.k_pump_max_temp)
+        # convert value to if, if F is set in cofig
+        if cbpi.get_config_parameter("unit", "C") == "C":        
+            pump_max_temp = round(9.0 / 5.0 * self.k_pump_max_temp + 32, 2)
+        else:       
+            pump_max_temp = int(self.k_pump_max_temp)
         pump_boil_auto_off_control_enabled = True
 
         while self.is_running():
