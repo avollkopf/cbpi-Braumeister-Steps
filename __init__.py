@@ -126,7 +126,13 @@ class BM_ManualStep(StepBase):
             self.s = True
             self.notify(self.heading, self.message, type=self.notifyType, timeout=None)
             if self.proceed == "Continue":
-                self.next()
+                #Python 2
+                try: 
+                    self.next()
+                #Python3
+                except:
+                    next(self)
+                pass
 
 ################################################################################
 @cbpi.step
@@ -182,7 +188,13 @@ class BM_MashStep(StepBase):
         if self.is_timer_finished() == True:
             self.setAutoMode(False)
             self.notify("Mash Step %s Completed!" % self.name, "Starting the next step", timeout=None)
-            self.next()
+            #Python 2
+            try: 
+                self.next()
+            #Python3
+            except:
+                next(self)
+            pass
 
     #-------------------------------------------------------------------------------
     def setAutoMode(self, auto_state):
@@ -298,7 +310,13 @@ class BM_BoilStep(StepBase):
         if self.is_timer_finished() == True:
             self.setAutoMode(False)
             self.notify("Boil Step Completed!", "Starting the next step", timeout=None)
-            self.next() 
+            #Python 2
+            try: 
+                self.next()
+            #Python3
+            except:
+                next(self)
+            pass
 
     #-------------------------------------------------------------------------------
     def setAutoMode(self, auto_state):
@@ -387,7 +405,7 @@ class BM_PIDSmartBoilWithPump(KettleController):
         
         maxoutput = float(self.d_max_output)
         # convert value to if, if F is set in cofig
-        if cbpi.get_config_parameter("unit", "C") == "C":        
+        if cbpi.get_config_parameter("unit", "C") != "C":        
             maxtemppid = round(9.0 / 5.0 * self.e_max_temp_pid + 32, 2)
         else:
             maxtemppid = float(self.e_max_temp_pid)
@@ -412,7 +430,7 @@ class BM_PIDSmartBoilWithPump(KettleController):
         next_pump_rest = None
 
         # convert value to if, if F is set in cofig
-        if cbpi.get_config_parameter("unit", "C") == "C":        
+        if cbpi.get_config_parameter("unit", "C") != "C":        
             pump_max_temp = round(9.0 / 5.0 * self.k_pump_max_temp + 32, 2)
         else:       
             pump_max_temp = int(self.k_pump_max_temp)
@@ -491,7 +509,7 @@ class BM_PIDArduino(object):
             raise ValueError('ki must be specified')
         if kd is None:
             raise ValueError('kd must be specified')
-        if sampleTimeSec <= 0:
+        if float(sampleTimeSec) <= float(0):
             raise ValueError('sampleTimeSec must be greater than 0')
         if outputMin >= outputMax:
             raise ValueError('outputMin must be less than outputMax')
