@@ -231,9 +231,11 @@ class BM_BoilStep(StepBase):
     # Properties
     lid_temp = 95 # temp in C for lid removal alarm during boil
     lid_flag = False
+    first_wort_hop_flag = False
     temp = Property.Number("Temperature", configurable=True, default_value=100, description="Target temperature for boiling")
     kettle = StepProperty.Kettle("Kettle", description="Kettle in which the boiling step takes place")
     timer = Property.Number("Timer in Minutes", configurable=True, description="Timer is started when target temperature is reached")
+    first_wort_hop = Property.Select("First Wort Hop Addition", options=["Yes","No"], description="First Wort Hop alert if set to Yes")
     hop_1 = Property.Number("Hop 1 Addition", configurable=True, description="First Hop alert (minutes before finish)")
     hop_1_added = Property.Number("",default_value=None)
     hop_2 = Property.Number("Hop 2 Addition", configurable=True, description="Second Hop alert (minutes before finish)")
@@ -277,11 +279,9 @@ class BM_BoilStep(StepBase):
 
 
     def check_hop_timer(self, number, value):
-
-        if (value != None 
-            and self.__getattribute__("hop_%s_added" % number) is not True 
-            and (time.time() > (self.timer_end - int(value)*60))):
-
+        if isinstance(value, int) and \
+            self.__getattribute__("hop_%s_added" % number) is not True and time.time() > (
+            self.timer_end - (int(self.timer) * 60 - int(value) * 60)):
             self.__setattr__("hop_%s_added" % number, True)
             self.notify("Hop Alert", "Please add Hop %s" % number, timeout=None)
 
@@ -290,22 +290,30 @@ class BM_BoilStep(StepBase):
         This method is execute in an interval
         :return:
         '''
+        if self.first_wort_hop_flag == False and self.first_wort_hop == "Yes":
+            self.first_wort_hop_flag = True
+            self.notify("First Wort Hop Addition!","Please add hops for first wort",timeout=None)
+
         if self.lid_flag == False and self.get_kettle_temp(self.kettle) >= self.lid_temp:
             self.notify("Please remove lid!", "Reached temp close to boiling", timeout=None)
             self.lid_flag = True
 
+        '''
+        This method is execute in an interval
+        :return:
+        '''
         # Check if Target Temp is reached
         if self.get_kettle_temp(self.kettle) >= float(self.temp):
             # Check if Timer is Running
             if self.is_timer_finished() is None:
                 self.start_timer(int(self.timer) * 60)
+            else:
+                self.check_hop_timer(1, self.hop_1)
+                self.check_hop_timer(2, self.hop_2)
+                self.check_hop_timer(3, self.hop_3)
+                self.check_hop_timer(4, self.hop_4)
+                self.check_hop_timer(5, self.hop_5)
 
-        if self.is_timer_finished() == False:
-            self.check_hop_timer(1, self.hop_1)
-            self.check_hop_timer(2, self.hop_2)
-            self.check_hop_timer(3, self.hop_3)
-            self.check_hop_timer(4, self.hop_4)
-            self.check_hop_timer(5, self.hop_5)
         # Check if timer finished and go to next step
         if self.is_timer_finished() == True:
             self.setAutoMode(False)
