@@ -289,7 +289,7 @@ class BM_BoilStep(StepBase):
         if self.is_timer_finished() is not None:
             self.timer_end = self.timer_end + 5 * 60
 
-def reset(self):
+    def reset(self):
         self.stop_timer()
         self.set_target_temp(self.temp, self.kettle)
 
