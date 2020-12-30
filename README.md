@@ -1,4 +1,7 @@
 # Plugin for usage of Craftbeerpi3 with the Speidel Braumeister
+***Update (30.12.2020)
+- Added button to mash- and boilstep that allows to add 5 minutes to the step (can be pressed several times)
+	- Can be used in case gravity is not where it should be and mash step should be extended
 
 ## Hardware requirements 
 - (Tested with a) Speidel Braumeister 20 Plus (2015).

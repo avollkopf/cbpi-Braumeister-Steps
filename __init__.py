@@ -164,6 +164,16 @@ class BM_MashStep(StepBase):
         if self.is_timer_finished() is None:
             self.start_timer(int(self.timer) * 60)
 
+    @cbpi.action("Add 5 Minutes to timer")
+    def addtime(self):
+        '''
+        Custom Action which can be execute form the brewing dashboard.
+        All method with decorator @cbpi.action("YOUR CUSTOM NAME") will be available in the user interface
+        :return:
+        '''
+        if self.is_timer_finished() is not None:
+            self.timer_end = self.timer_end + 5 * 60
+        
     def reset(self):
         self.stop_timer()
         self.set_target_temp(self.temp, self.kettle)
@@ -269,7 +279,17 @@ class BM_BoilStep(StepBase):
         if self.is_timer_finished() is None:
             self.start_timer(int(self.timer) * 60)
 
-    def reset(self):
+    @cbpi.action("Add 5 Minutes to timer")
+    def addtime(self):
+        '''
+        Custom Action which can be execute form the brewing dashboard.
+        All method with decorator @cbpi.action("YOUR CUSTOM NAME") will be available in the user interface
+        :return:
+        '''
+        if self.is_timer_finished() is not None:
+            self.timer_end = self.timer_end + 5 * 60
+
+def reset(self):
         self.stop_timer()
         self.set_target_temp(self.temp, self.kettle)
 
