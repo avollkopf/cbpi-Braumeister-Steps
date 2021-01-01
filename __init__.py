@@ -7,12 +7,12 @@ from modules.core.props import Property, StepProperty
 from modules.core.step import StepBase
 from modules import cbpi
 import time
+import datetime
 from os import system, listdir, remove
 
 LOG_DIR = "./logs/"
 APP_LOG = "app.log"
 LOG_SEP = "-=-"
-
 
 def BM_RecipeCreation():
 	global bm_recipe_creation
@@ -34,7 +34,6 @@ def init(cbpi):
             cbpi.notify("Braumeister Recipe  Error", "Check Braumeister Recipe Flag is set", type="danger", timeout=None)
         else:
             BM_Recipes = "OK"
-
 
 ##################################################################################
 @cbpi.step
@@ -144,7 +143,7 @@ class BM_MashStep(StepBase):
     temp = Property.Number("Temperature", configurable=True, description="Target Temperature of Mash Step")
     kettle = StepProperty.Kettle("Kettle", description="Kettle in which the mashing takes place")
     timer = Property.Number("Timer in Minutes", configurable=True, description="Timer is started when the target temperature is reached")
-
+    timer_pause = 0
     def init(self):
         '''
         Initialize Step. This method is called once at the beginning of the step
@@ -172,8 +171,36 @@ class BM_MashStep(StepBase):
         :return:
         '''
         if self.is_timer_finished() is not None:
-            self.timer_end = self.timer_end + 5 * 60
-        
+            self.timer_end = self.timer_end + (5 * 60)
+        else:
+            self.notify("Function only available when timer is running!"," ", timeout=5000, type="warning")
+
+
+    @cbpi.action("Pause/Resume")
+    def pause(self):
+        '''
+        Custom Action which can be execute form the brewing dashboard.
+        All method with decorator @cbpi.action("YOUR CUSTOM NAME") will be available in the user interface
+        :return:
+        '''
+        if self.is_timer_finished() is not None:
+            kettle = cbpi.cache.get("kettle")[int(self.kettle)]
+            if (kettle.state is False):
+                timer_now=int(time.time())
+                timer_delta = timer_now - self.timer_pause
+                time_str = datetime.datetime.fromtimestamp(timer_now).strftime('%H:%M:%S')
+                delta_str = timer_delta / 60
+                self.notify("Timer Now %s" % time_str, "Minutes added: %.1f" % delta_str, timeout=None)
+                self.timer_end = self.timer_end + timer_delta
+                self.setAutoMode(True)
+            elif (kettle.state is True):
+                self.timer_pause = int(time.time())
+                time_str = datetime.datetime.fromtimestamp(self.timer_pause).strftime('%H:%M:%S')
+                self.notify("Timer Paused at: %s" % time_str, "Press Resume. Pause time added afterwards!" , timeout=None)
+                self.setAutoMode(False)
+        else:
+            self.notify("Function only available when timer is running!", " ", timeout=5000, type="warning")
+
     def reset(self):
         self.stop_timer()
         self.set_target_temp(self.temp, self.kettle)
@@ -287,7 +314,7 @@ class BM_BoilStep(StepBase):
         :return:
         '''
         if self.is_timer_finished() is not None:
-            self.timer_end = self.timer_end + 5 * 60
+            self.timer_end = self.timer_end + (5 * 60)
 
     def reset(self):
         self.stop_timer()

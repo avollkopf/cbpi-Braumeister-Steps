@@ -1,4 +1,14 @@
 # Plugin for usage of Craftbeerpi3 with the Speidel Braumeister
+***Update (01.01.2021)
+- Added Pause/Resume Button to BM_MashStep
+- This allows for interuption of process to stir for instance the malt during the mash or rotate the malt pipe
+	- Button does only work when timer is running -> Notification is displayed
+	- When button is pushed, auto mode is stopped and timestamp recorded
+	- Pump and heater stops, but timer is still running.
+	- When Button is pushed again to resume, time between Pause and resume is added to the timer
+- The 5 minute button which has been added in the previous update does now also only wirk if timer is running
+	- Notification is displayed
+
 ***Update (30.12.2020)
 - Added button to mash- and boilstep that allows to add 5 minutes to the step (can be pressed several times)
 	- Can be used in case gravity is not where it should be and mash step should be extended
