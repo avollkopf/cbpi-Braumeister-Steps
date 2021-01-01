@@ -6,6 +6,7 @@
 	- When button is pushed, auto mode is stopped and timestamp recorded
 	- Pump and heater stops, but timer is still running.
 	- When Button is pushed again to resume, time between Pause and resume is added to the timer
+	- If Pause is still active when step is finished, 'Next Step' needs to be pushed to move to next mash step
 - The 5 minute button which has been added in the previous update does now also only wirk if timer is running
 	- Notification is displayed
 

@@ -144,6 +144,9 @@ class BM_MashStep(StepBase):
     kettle = StepProperty.Kettle("Kettle", description="Kettle in which the mashing takes place")
     timer = Property.Number("Timer in Minutes", configurable=True, description="Timer is started when the target temperature is reached")
     timer_pause = 0
+    pause_status = False
+    step_finished = False
+
     def init(self):
         '''
         Initialize Step. This method is called once at the beginning of the step
@@ -193,11 +196,13 @@ class BM_MashStep(StepBase):
                 self.notify("Timer Now %s" % time_str, "Minutes added: %.1f" % delta_str, timeout=None)
                 self.timer_end = self.timer_end + timer_delta
                 self.setAutoMode(True)
+                self.pause_status = False
             elif (kettle.state is True):
                 self.timer_pause = int(time.time())
                 time_str = datetime.datetime.fromtimestamp(self.timer_pause).strftime('%H:%M:%S')
                 self.notify("Timer Paused at: %s" % time_str, "Press Resume. Pause time added afterwards!" , timeout=None)
                 self.setAutoMode(False)
+                self.pause_status = True
         else:
             self.notify("Function only available when timer is running!", " ", timeout=5000, type="warning")
 
@@ -223,15 +228,23 @@ class BM_MashStep(StepBase):
 
         # Check if timer finished and go to next step
         if self.is_timer_finished() == True:
-            self.setAutoMode(False)
-            self.notify("Mash Step %s Completed!" % self.name, "Starting the next step", timeout=None)
-            #Python 2
-            try: 
-                self.next()
-            #Python3
-            except:
-                next(self)
-            pass
+            if self.step_finished == False:
+                self.step_finished = True
+                self.setAutoMode(False)
+                self.notify("Mash Step %s Completed!" % self.name, "Starting the next step", timeout=None)
+                #Python 2
+                try: 
+                    if self.pause_status == False:
+                        self.next()
+                    else:
+                        self.notify("Mash Step is still paused!", "Please use 'Next step' to move on!", type="warning",timeout=None)
+                #Python3
+                except:
+                    if self.pause_status == False:
+                        next(self)
+                    else:
+                        self.notify("Mash Step is still paused!", "Please use 'Next step' to move on!", type="warning",timeout=None)
+                pass
 
     #-------------------------------------------------------------------------------
     def setAutoMode(self, auto_state):
